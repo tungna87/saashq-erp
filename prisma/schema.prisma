@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -41,17 +38,17 @@ model crm_Accounts {
   type                 String?              @default("Customer")
   vat                  String?
   website              String?
-  invoices             Invoices[]
   documentsIDs         String[]
-  assigned_documents   Documents[]
+  watchers             String[]
+  invoices             Invoices[]
+  assigned_to_user     Users?               @relation(fields: [assigned_to], references: [id])
+  industry_type        crm_Industry_Type?   @relation(fields: [industry], references: [id])
+  crm_accounts_tasks   crm_Accounts_Tasks[]
   contacts             crm_Contacts[]
   leads                crm_Leads[]
-  industry_type        crm_Industry_Type?   @relation(fields: [industry], references: [id])
   opportunities        crm_Opportunities[]
-  assigned_to_user     Users?               @relation(fields: [assigned_to], references: [id])
-  crm_accounts_tasks   crm_Accounts_Tasks[]
-  watchers             String[]
-  watching_users       Users[]              @relation(name: "watching_accounts")
+  assigned_documents   Documents[]          @relation("DocumentsTocrm_Accounts")
+  watching_users       Users[]              @relation("watching_accounts")
 }
 
 model crm_Leads {
@@ -73,22 +70,11 @@ model crm_Leads {
   status             String?       @default("NEW")
   type               String?       @default("DEMO")
   assigned_to        String?
-  assigned_to_user   Users?        @relation(fields: [assigned_to], references: [id])
   accountsIDs        String?
-  assigned_accounts  crm_Accounts? @relation(fields: [accountsIDs], references: [id])
   documentsIDs       String[]
-  assigned_documents Documents[]
-}
-
-enum crm_Lead_Status {
-  NEW
-  CONTACTED
-  QUALIFIED
-  LOST
-}
-
-enum crm_Lead_Type {
-  DEMO
+  assigned_accounts  crm_Accounts? @relation(fields: [accountsIDs], references: [id])
+  assigned_to_user   Users?        @relation(fields: [assigned_to], references: [id])
+  assigned_documents Documents[]   @relation("DocumentsTocrm_Leads")
 }
 
 model crm_Opportunities {
@@ -115,23 +101,16 @@ model crm_Opportunities {
   sales_stage          String?
   type                 String?
   status               crm_Opportunity_Status?         @default(ACTIVE)
-  assigned_type        crm_Opportunities_Type?         @relation(fields: [type], references: [id])
-  assigned_sales_stage crm_Opportunities_Sales_Stages? @relation(name: "assinged_sales_stage", fields: [sales_stage], references: [id])
-  assigned_to_user     Users?                          @relation(name: "assigned_to_user_relation", fields: [assigned_to], references: [id])
-  created_by_user      Users?                          @relation(name: "created_by_user_relation", fields: [created_by], references: [id])
-  assigned_account     crm_Accounts?                   @relation(fields: [account], references: [id])
-  assigned_campaings   crm_campaigns?                  @relation(fields: [campaign], references: [id])
   connected_documents  String[]
-  documents            Documents[]
   connected_contacts   String[]
-  contacts             crm_Contacts[]
-}
-
-enum crm_Opportunity_Status {
-  ACTIVE
-  INACTIVE
-  PENDING
-  CLOSED
+  assigned_account     crm_Accounts?                   @relation(fields: [account], references: [id])
+  assigned_to_user     Users?                          @relation("assigned_to_user_relation", fields: [assigned_to], references: [id])
+  assigned_campaings   crm_campaigns?                  @relation(fields: [campaign], references: [id])
+  created_by_user      Users?                          @relation("created_by_user_relation", fields: [created_by], references: [id])
+  assigned_sales_stage crm_Opportunities_Sales_Stages? @relation("assinged_sales_stage", fields: [sales_stage], references: [id])
+  assigned_type        crm_Opportunities_Type?         @relation(fields: [type], references: [id])
+  documents            Documents[]                     @relation("DocumentsTocrm_Opportunities")
+  contacts             crm_Contacts[]                  @relation("crm_ContactsTocrm_Opportunities")
 }
 
 model crm_campaigns {
@@ -147,7 +126,7 @@ model crm_Opportunities_Sales_Stages {
   name                               String
   probability                        Int?
   order                              Int?
-  assigned_opportunities_sales_stage crm_Opportunities[] @relation(name: "assinged_sales_stage")
+  assigned_opportunities_sales_stage crm_Opportunities[] @relation("assinged_sales_stage")
 }
 
 model crm_Opportunities_Type {
@@ -188,20 +167,14 @@ model crm_Contacts {
   social_youtube         String?
   social_tiktok          String?
   type                   String?             @default("Customer")
-  assigned_to_user       Users?              @relation(name: "assigned_contacts", fields: [assigned_to], references: [id])
-  crate_by_user          Users?              @relation(name: "created_contacts", fields: [created_by], references: [id])
   opportunitiesIDs       String[]
-  assigned_opportunities crm_Opportunities[]
   accountsIDs            String?
-  assigned_accounts      crm_Accounts?       @relation(fields: [accountsIDs], references: [id])
   documentsIDs           String[]
-  assigned_documents     Documents[]
-}
-
-enum crm_Contact_Type {
-  Customer
-  Partner
-  Vendor
+  assigned_accounts      crm_Accounts?       @relation(fields: [accountsIDs], references: [id])
+  assigned_to_user       Users?              @relation("assigned_contacts", fields: [assigned_to], references: [id])
+  crate_by_user          Users?              @relation("created_contacts", fields: [created_by], references: [id])
+  assigned_documents     Documents[]         @relation("DocumentsTocrm_Contacts")
+  assigned_opportunities crm_Opportunities[] @relation("crm_ContactsTocrm_Opportunities")
 }
 
 model Boards {
@@ -219,10 +192,9 @@ model Boards {
   createdBy         String?
   updatedAt         DateTime? @updatedAt @db.Date
   updatedBy         String?
-  // Create watchers field for board. It will be array of users
   watchers          String[]
-  assigned_user     Users?    @relation(name: "assigned_user", fields: [user], references: [id])
-  watchers_users    Users[]   @relation(name: "watching_users")
+  assigned_user     Users     @relation("assigned_user", fields: [user], references: [id])
+  watchers_users    Users[]   @relation("watching_users")
 }
 
 model ImageUpload {
@@ -242,21 +214,18 @@ model MyAccount {
   fax_prefix           String?
   fax                  String?
   website              String?
-  // office Address
   street               String?
   city                 String?
   state                String?
   zip                  String?
   country              String?
   country_code         String?
-  // billing Address
   billing_street       String?
   billing_city         String?
   billing_state        String?
   billing_zip          String?
   billing_country      String?
   billing_country_code String?
-  // other
   currency             String?
   currency_symbol      String?
   VAT_number           String
@@ -333,11 +302,11 @@ model Invoices {
   assigned_user_id              String?
   assigned_account_id           String?
   visibility                    Boolean         @default(true)
-  invoice_states                invoice_States? @relation(fields: [invoice_state_id], references: [id])
-  users                         Users?          @relation(fields: [assigned_user_id], references: [id])
-  accounts                      crm_Accounts?   @relation(fields: [assigned_account_id], references: [id])
   connected_documents           String[]
-  documents                     Documents[]
+  accounts                      crm_Accounts?   @relation(fields: [assigned_account_id], references: [id])
+  users                         Users?          @relation(fields: [assigned_user_id], references: [id])
+  invoice_states                invoice_States? @relation(fields: [invoice_state_id], references: [id])
+  documents                     Documents[]     @relation("DocumentsToInvoices")
 }
 
 model invoice_States {
@@ -376,32 +345,18 @@ model Documents {
   accountsIDs            String[]
   localFile              String
   employeeID             String
-  invoices               Invoices[]
-  opportunities          crm_Opportunities[]
-  contacts               crm_Contacts[]
-  tasks                  Tasks[]
-  crm_accounts_tasks     crm_Accounts_Tasks? @relation(fields: [crm_accounts_tasksIDs], references: [id])
-  leads                  crm_Leads[]
-  accounts               crm_Accounts[]
-  employee               Employee            @relation(fields: [employeeID], references: [id])
-  created_by             Users?              @relation(name: "created_by_user", fields: [created_by_user], references: [id])
-  assigned_to_user       Users?              @relation(name: "assigned_to_user", fields: [assigned_user], references: [id])
-  documents_type         Documents_Types?    @relation(fields: [document_type], references: [id])
   document_system_type   DocumentSystemType? @default(OTHER)
-}
-
-enum DocumentSystemType {
-  INVOICE
-  RECEIPT
-  CONTRACT
-  OFFER
-  ID
-  PASSPORT
-  VISA
-  INSURANCE
-  HEALTH
-  CERTIFICATE
-  OTHER
+  assigned_to_user       Users?              @relation("assigned_to_user", fields: [assigned_user], references: [id])
+  created_by             Users?              @relation("created_by_user", fields: [created_by_user], references: [id])
+  crm_accounts_tasks     crm_Accounts_Tasks? @relation(fields: [crm_accounts_tasksIDs], references: [id])
+  documents_type         Documents_Types?    @relation(fields: [document_type], references: [id])
+  employee               Employee            @relation(fields: [employeeID], references: [id])
+  invoices               Invoices[]          @relation("DocumentsToInvoices")
+  tasks                  Tasks[]             @relation("DocumentsToTasks")
+  accounts               crm_Accounts[]      @relation("DocumentsTocrm_Accounts")
+  contacts               crm_Contacts[]      @relation("DocumentsTocrm_Contacts")
+  leads                  crm_Leads[]         @relation("DocumentsTocrm_Leads")
+  opportunities          crm_Opportunities[] @relation("DocumentsTocrm_Opportunities")
 }
 
 model Documents_Types {
@@ -447,12 +402,11 @@ model Tasks {
   likes            Int?            @default(0)
   user             String?
   documentIDs      String[]
-  comments         tasksComments[]
-  documents        Documents[]
-  assigned_user    Users?          @relation(fields: [user], references: [id])
-  assigned_section Sections?       @relation(fields: [section], references: [id])
-  // Staus
   taskStatus       taskStatus?     @default(ACTIVE)
+  assigned_section Sections?       @relation(fields: [section], references: [id])
+  assigned_user    Users?          @relation(fields: [user], references: [id])
+  comments         tasksComments[]
+  documents        Documents[]     @relation("DocumentsToTasks")
 }
 
 model crm_Accounts_Tasks {
@@ -468,14 +422,12 @@ model crm_Accounts_Tasks {
   title         String
   likes         Int?            @default(0)
   user          String?
-  comments      tasksComments[]
-  documents     Documents[]
-  assigned_user Users?          @relation(fields: [user], references: [id])
-  // CRM assigments
   account       String?
-  crm_accounts  crm_Accounts?   @relation(fields: [account], references: [id])
-  // Staus
   taskStatus    taskStatus?     @default(ACTIVE)
+  documents     Documents[]
+  crm_accounts  crm_Accounts?   @relation(fields: [account], references: [id])
+  assigned_user Users?          @relation(fields: [user], references: [id])
+  comments      tasksComments[]
 }
 
 model tasksComments {
@@ -484,19 +436,13 @@ model tasksComments {
   createdAt                      DateTime            @default(now()) @db.Date
   task                           String
   user                           String
-  employee                       Employee            @relation(fields: [employeeID], references: [id])
-  teamTasks                      TeamTask[]
   employeeID                     String
   assigned_crm_account_task      String?
   assigned_crm_account_task_task crm_Accounts_Tasks? @relation(fields: [assigned_crm_account_task], references: [id])
-  assigned_task                  Tasks?              @relation(fields: [task], references: [id], onDelete: Cascade)
-  assigned_user                  Users?              @relation(fields: [user], references: [id])
-}
-
-enum taskStatus {
-  ACTIVE
-  PENDING
-  COMPLETE
+  employee                       Employee            @relation(fields: [employeeID], references: [id])
+  assigned_task                  Tasks               @relation(fields: [task], references: [id], onDelete: Cascade)
+  assigned_user                  Users               @relation(fields: [user], references: [id])
+  teamTasks                      TeamTask[]          @relation("TeamTaskTotasksComments")
 }
 
 model TodoList {
@@ -506,12 +452,6 @@ model TodoList {
   title       String
   url         String
   user        String
-}
-
-enum ActiveStatus {
-  ACTIVE
-  INACTIVE
-  PENDING
 }
 
 model Users {
@@ -528,37 +468,28 @@ model Users {
   username             String?
   userStatus           ActiveStatus          @default(PENDING)
   userLanguage         Language              @default(en)
-  tasksComment         tasksComments[]
-  created_by_documents Documents[]           @relation(name: "created_by_user")
-  assigned_documents   Documents[]           @relation(name: "assigned_to_user")
-  tasks                Tasks[]
-  crm_accounts_tasks   crm_Accounts_Tasks[]
-  accounts             crm_Accounts[]
-  leads                crm_Leads[]
-  created_by_user      crm_Opportunities[]   @relation(name: "created_by_user_relation")
-  assigned_opportunity crm_Opportunities[]   @relation(name: "assigned_to_user_relation")
-  assigned_contacts    crm_Contacts[]        @relation(name: "assigned_contacts")
-  created_contacts     crm_Contacts[]        @relation(name: "created_contacts")
-  notion_account       secondBrain_notions[]
-  openAi_key           openAi_keys[]
-  assigned_invoices    Invoices[]
-  boards               Boards[]              @relation(name: "assigned_user")
   watching_boardsIDs   String[]
-  watching_boards      Boards[]              @relation(name: "watching_users")
   watching_accountsIDs String[]
-  watching_accounts    crm_Accounts[]        @relation(name: "watching_accounts")
   role                 Role                  @default(guest)
-  employee             Employee[]
+  boards               Boards[]              @relation("assigned_user")
   userWorkflowDef      Definitions[]
-}
-
-enum Language {
-  cz
-  de
-  en
-  uk
-  ko
-  tr
+  assigned_documents   Documents[]           @relation("assigned_to_user")
+  created_by_documents Documents[]           @relation("created_by_user")
+  employee             Employee[]
+  assigned_invoices    Invoices[]
+  tasks                Tasks[]
+  accounts             crm_Accounts[]
+  crm_accounts_tasks   crm_Accounts_Tasks[]
+  assigned_contacts    crm_Contacts[]        @relation("assigned_contacts")
+  created_contacts     crm_Contacts[]        @relation("created_contacts")
+  leads                crm_Leads[]
+  assigned_opportunity crm_Opportunities[]   @relation("assigned_to_user_relation")
+  created_by_user      crm_Opportunities[]   @relation("created_by_user_relation")
+  openAi_key           openAi_keys[]
+  notion_account       secondBrain_notions[]
+  tasksComment         tasksComments[]
+  watching_accounts    crm_Accounts[]        @relation("watching_accounts")
+  watching_boards      Boards[]              @relation("watching_users")
 }
 
 model system_Modules_Enabled {
@@ -573,7 +504,7 @@ model secondBrain_notions {
   user           String
   notion_api_key String
   notion_db_id   String
-  assigned_user  Users? @relation(fields: [user], references: [id])
+  assigned_user  Users  @relation(fields: [user], references: [id])
 }
 
 model openAi_keys {
@@ -581,7 +512,7 @@ model openAi_keys {
   user            String
   organization_id String
   api_key         String
-  assigned_user   Users? @relation(fields: [user], references: [id])
+  assigned_user   Users  @relation(fields: [user], references: [id])
 }
 
 model systemServices {
@@ -603,61 +534,40 @@ model gpt_models {
   created_on  DateTime?  @default(now()) @db.Date
 }
 
-enum gptStatus {
-  ACTIVE
-  INACTIVE
-}
-
-// Employee section
-
-enum Role {
-  admin
-  user
-  guest
-}
-
-enum CompanyRole {
-  Admin
-  Employee
-  Manager
-}
-
 model Employee {
-  id               String        @id @default(uuid())
+  id               String          @id @default(uuid())
   createdBy        String?
   updatedBy        String?
   firstName        String
   lastName         String
-  email            String        @unique
-  phone            String        @unique
-  role             CompanyRole   @default(Employee)
+  email            String          @unique
+  phone            String          @unique
+  role             CompanyRole     @default(Employee)
   position         String?
-  salary           Float         @default(0.00)
+  salary           Float           @default(0.00)
   onBoarding       DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   IBAN             String
   photo            String?
   taxid            String?
   address          String?
   insurance        String?
   assigned_to      String?
-  assigned_to_user Users?        @relation(fields: [assigned_to], references: [id])
+  teamsId          String?
+  Documents        Documents[]
+  assigned_to_user Users?          @relation(fields: [assigned_to], references: [id])
+  Teams            Teams?          @relation(fields: [teamsId], references: [id])
+  sent             Message[]       @relation("sender")
+  from             Message[]       @relation("receiver")
+  PaySlip          PaySlip[]
+  PaySlipData      PaySlipData[]
+  Request          Request[]
+  Schedule         Schedule[]
+  TeamMessage      TeamMessage[]   @relation("sender")
   timekeeping      Timekeeping[]
-
-  Schedule    Schedule[]
-  Documents   Documents[]
-  Training    Training[]
-  PaySlip     PaySlip[]
-  PaySlipData PaySlipData[]
-  Request     Request[]
-  Teams       Teams?        @relation(fields: [teamsId], references: [id])
-  teamsId     String?
-
-  sent        Message[]       @relation("sender")
-  from        Message[]       @relation("receiver")
-  TeamMessage TeamMessage[]   @relation("sender")
-  Comments    tasksComments[]
+  Training         Training[]
+  Comments         tasksComments[]
 }
 
 model Teams {
@@ -673,18 +583,17 @@ model Teams {
 
 model Timekeeping {
   id         String    @id @default(uuid())
-  employee   Employee  @relation(fields: [employeeID], references: [id])
   employeeID String
   timeIn     DateTime
   timeOut    DateTime?
   verified   Boolean   @default(false)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  employee   Employee  @relation(fields: [employeeID], references: [id])
 }
 
 model TeamTask {
   id           String          @id @default(uuid())
-  team         Teams           @relation(fields: [teamID], references: [id], onDelete: Cascade)
   teamID       String
   task         String
   description  String?
@@ -692,34 +601,23 @@ model TeamTask {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   deadline     DateTime
-  TaskComments tasksComments[]
+  team         Teams           @relation(fields: [teamID], references: [id], onDelete: Cascade)
+  TaskComments tasksComments[] @relation("TeamTaskTotasksComments")
 }
 
 model Schedule {
   id         String   @id @default(uuid())
-  employee   Employee @relation(fields: [employeeID], references: [id])
   employeeID String
   date       DateTime
   timeIn     DateTime
   timeOut    DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-}
-
-enum Document {
-  ID
-  Passport
-  Visa
-  Insurance
-  Health
-  Contract
-  Certificate
-  Other
+  employee   Employee @relation(fields: [employeeID], references: [id])
 }
 
 model Training {
   id         String   @id @default(uuid())
-  employee   Employee @relation(fields: [employeeID], references: [id])
   employeeID String
   type       String
   date       DateTime
@@ -727,21 +625,21 @@ model Training {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   localFile  String
+  employee   Employee @relation(fields: [employeeID], references: [id])
 }
 
 model PaySlip {
   id         String   @id @default(uuid())
-  employee   Employee @relation(fields: [employeeID], references: [id])
   employeeID String
   month      DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   localFile  String
+  employee   Employee @relation(fields: [employeeID], references: [id])
 }
 
 model PaySlipData {
   id         String   @id @default(uuid())
-  employee   Employee @relation(fields: [employeeID], references: [id])
   employeeID String
   hours      Float
   rate       Float
@@ -750,11 +648,11 @@ model PaySlipData {
   month      DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  employee   Employee @relation(fields: [employeeID], references: [id])
 }
 
 model Request {
   id         String      @id @default(uuid())
-  employee   Employee    @relation(fields: [employeeID], references: [id])
   employeeID String
   type       RequestType
   approved   Boolean     @default(false)
@@ -762,46 +660,29 @@ model Request {
   date       DateTime
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
-}
-
-enum RequestType {
-  Documents
-  Vacation
-  Leave
-  Training
-  Raise
-  Department
-  Other
-  Sick
+  employee   Employee    @relation(fields: [employeeID], references: [id])
 }
 
 model Message {
   id        String   @id @default(uuid())
-  from      Employee @relation("sender", fields: [fromID], references: [id])
   fromID    String
-  to        Employee @relation("receiver", fields: [toID], references: [id])
   toID      String
   message   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  from      Employee @relation("sender", fields: [fromID], references: [id])
+  to        Employee @relation("receiver", fields: [toID], references: [id])
 }
 
 model TeamMessage {
   id        String   @id @default(uuid())
-  from      Employee @relation("sender", fields: [fromID], references: [id])
   fromID    String
-  to        Teams    @relation("receiver", fields: [toID], references: [id])
   toID      String
   message   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-// Workflow section
-
-enum DefinitionStatus {
-  active
-  inactive
+  from      Employee @relation("sender", fields: [fromID], references: [id])
+  to        Teams    @relation("receiver", fields: [toID], references: [id])
 }
 
 model Definitions {
@@ -815,14 +696,8 @@ model Definitions {
   createdAt          DateTime?        @default(now()) @db.Date
   updatedAt          DateTime?        @updatedAt @db.Date
   userWfDefinitionId String
-  runtimes           Runtimes[]
   userWfDefinition   Users            @relation(fields: [userWfDefinitionId], references: [id])
-}
-
-enum RuntimeStatus {
-  pending
-  completed
-  failed
+  runtimes           Runtimes[]
 }
 
 model Runtimes {
@@ -833,7 +708,116 @@ model Runtimes {
   logs                 Json[]
   workflowStatus       RuntimeStatus @default(pending)
   workflowDefinitionId String
-  definitions          Definitions   @relation(fields: [workflowDefinitionId], references: [id])
   createdAt            DateTime?     @default(now()) @db.Date
   updatedAt            DateTime?     @updatedAt @db.Date
+  definitions          Definitions   @relation(fields: [workflowDefinitionId], references: [id])
+}
+
+enum crm_Lead_Status {
+  NEW
+  CONTACTED
+  QUALIFIED
+  LOST
+}
+
+enum crm_Lead_Type {
+  DEMO
+}
+
+enum crm_Opportunity_Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+  CLOSED
+}
+
+enum crm_Contact_Type {
+  Customer
+  Partner
+  Vendor
+}
+
+enum DocumentSystemType {
+  INVOICE
+  RECEIPT
+  CONTRACT
+  OFFER
+  ID
+  PASSPORT
+  VISA
+  INSURANCE
+  HEALTH
+  CERTIFICATE
+  OTHER
+}
+
+enum taskStatus {
+  ACTIVE
+  PENDING
+  COMPLETE
+}
+
+enum ActiveStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum Language {
+  cz
+  de
+  en
+  uk
+  ko
+  tr
+}
+
+enum gptStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Role {
+  admin
+  user
+  guest
+}
+
+enum CompanyRole {
+  Admin
+  Employee
+  Manager
+}
+
+enum Document {
+  ID
+  Passport
+  Visa
+  Insurance
+  Health
+  Contract
+  Certificate
+  Other
+}
+
+enum RequestType {
+  Documents
+  Vacation
+  Leave
+  Training
+  Raise
+  Department
+  Other
+  Sick
+}
+
+enum DefinitionStatus {
+  active
+  inactive
+}
+
+enum RuntimeStatus {
+  pending
+  completed
+  failed
 }
