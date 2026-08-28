@@ -6,61 +6,75 @@ import { PutObjectAclCommand } from '@aws-sdk/client-s3';
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 
-export async function GET({ params }: { params: { invoiceId: string } }) {
+export async function GET(
+  request: Request,
+  { params }: { params: { invoiceId: string } }
+) {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ status: 401, body: { error: 'Unauthorized' } });
-  }
 
-  //console.log(myCompany, "myCompany");
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
 
   const { invoiceId } = params;
 
   if (!invoiceId) {
-    return NextResponse.json({
-      status: 400,
-      body: { error: 'There is no inovice ID, invoice ID is mandatory' },
-    });
+    return NextResponse.json(
+      {
+        error: 'There is no invoice ID, invoice ID is mandatory',
+      },
+      { status: 400 }
+    );
   }
 
-  //Get data for invoice headers
+  // Get data for invoice headers
   const myCompany = await prismadb.myAccount.findFirst({});
 
-  //Get data for invoice body
+  // Get data for invoice body
   const invoiceData = await prismadb.invoices.findFirst({
     where: {
       id: invoiceId,
     },
   });
 
-  //This function will generate XML file from template and data
+  if (!invoiceData) {
+    return NextResponse.json(
+      {
+        error: 'Invoice not found',
+      },
+      { status: 404 }
+    );
+  }
+
+  // Generate XML file from template and data
   const xmlString = fillXmlTemplate(invoiceData, myCompany);
 
-  //write xml to file in public folder /public/tmp/[invoiceId].xml
-  //fs.writeFileSync(`public/tmp/${invoiceId}.xml`, xmlString);
-  //fs.writeFileSync(`public/tmp/${invoiceData}.json`, invoiceData);
-
-  //Store raw XML string in buffer
+  // Store raw XML string in buffer
   const buffer = Buffer.from(xmlString);
 
-  //Upload xml to S3 bucket and return url
+  // Upload XML to S3 bucket
   const bucketParamsJSON = {
     Bucket: process.env.DO_BUCKET,
     Key: `xml/invoice-${invoiceId}.xml`,
     Body: buffer,
-    ContentType: 'application/json',
+    ContentType: 'application/xml',
     ContentDisposition: 'inline',
-    //   ACL: "public-read",
   };
 
-  await s3Client.send(new PutObjectAclCommand(bucketParamsJSON));
+  await s3Client.send(
+    new PutObjectAclCommand(bucketParamsJSON)
+  );
 
-  //S3 bucket url for the invoice
-  const urlMoneyS3 = `https://${process.env.DO_BUCKET}.${process.env.DO_REGION}.digitaloceanspaces.com/xml/invoice-${invoiceId}.xml`;
+  // S3 bucket URL for the invoice
+  const urlMoneyS3 =
+    `https://${process.env.DO_BUCKET}.` +
+    `${process.env.DO_REGION}.digitaloceanspaces.com/` +
+    `xml/invoice-${invoiceId}.xml`;
 
-  //console.log(urlMoneyS3, "url MoneyS3");
-
-  //Write url to database assigned to invoice
+  // Write URL to database
   await prismadb.invoices.update({
     where: {
       id: invoiceId,
@@ -70,5 +84,11 @@ export async function GET({ params }: { params: { invoiceId: string } }) {
     },
   });
 
-  return NextResponse.json({ xmlString, invoiceData }, { status: 200 });
+  return NextResponse.json(
+    {
+      xmlString,
+      invoiceData,
+    },
+    { status: 200 }
+  );
 }
