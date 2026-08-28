@@ -1,33 +1,37 @@
 import { ImageResponse } from 'next/og';
-import { TbBrandNextjs, TbBrandTypescript } from 'react-icons/tb';
-import { BiLogoMongodb, BiLogoTailwindCss } from 'react-icons/bi';
-import { SiPrisma, SiReact, SiOpenai } from 'react-icons/si';
+import {
+  SiNextdotjs,
+  SiTypescript,
+  SiMongodb,
+  SiPrisma,
+  SiReact,
+  SiTailwindcss,
+  SiOpenai,
+} from 'react-icons/si';
 
 export const runtime = 'edge';
 
-const websiteUrl = process.env.NEXT_PUBLIC_APP_URL;
+const websiteUrl =
+  process.env.NEXT_PUBLIC_APP_URL || 'https://demo.saashq.org';
 
 export async function GET(request: Request) {
   try {
     const interExtrabold = fetch(
       new URL('../../../public/Inter-Bold.ttf', import.meta.url)
     ).then((res) => res.arrayBuffer());
+
     const { searchParams } = new URL(request.url);
 
-    const hasTitle = searchParams.has('title');
-    const title = hasTitle
-      ? searchParams.get('title')?.slice(0, 200)
-      : 'SaasHQ';
+    const title =
+      searchParams.get('title')?.slice(0, 200) || 'SaasHQ';
 
-    const hasDescription = searchParams.has('description');
-
-    const description = hasDescription
-      ? searchParams.get('description')?.slice(0, 200)
-      : 'SaasHQ is an open source CRM/ERP starter built on top of NextJS. Technology stack: NextJS with Typescrtipt, Postgresql, TailwindCSS, React, Prisma, shadCN, resend.com, react.email and more. ';
+    const description =
+      searchParams.get('description')?.slice(0, 200) ||
+      'SaasHQ is an open source CRM/ERP starter built on top of NextJS. Technology stack: NextJS with Typescript, Postgresql, TailwindCSS, React, Prisma, shadCN, resend.com, react.email and more.';
 
     return new ImageResponse(
       (
-        <div tw="flex flex-row-reverse h-full bg-neutral-800 ">
+        <div tw="flex flex-row-reverse h-full bg-neutral-800">
           <div tw="flex w-1/2 h-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -35,27 +39,37 @@ export async function GET(request: Request) {
               src={`${websiteUrl}/img/hero.png`}
               width="50%"
               height="50%"
-              alt="Prism"
+              alt="SaasHQ"
             />
+
             <div
               tw="absolute left-[-80px] top-[-30px] w-[150px] h-[120%] bg-neutral-800"
-              style={{ transform: 'rotate(12deg)' }}
+              style={{
+                transform: 'rotate(12deg)',
+              }}
             />
           </div>
+
           <div tw="flex flex-col w-1/2 p-[48px] mt-auto text-white">
             <h1 tw="text-[52px]">{title}</h1>
-            <p tw="text-[26px] text-neutral-400">{description}</p>
-            <span tw="py-5">
-              <TbBrandNextjs size={50} color={'white'} />
-              <TbBrandTypescript size={50} color={'blue'} />
-              <BiLogoMongodb size={50} color={'green'} />
-              <SiPrisma size={50} color={'purple'} />
-              <SiReact size={50} color={'blue'} />
-              <BiLogoTailwindCss size={50} color={'blue'} />
-              <SiOpenai size={50} color={'white'} />
-            </span>
 
-            <p tw="text-neutral-300 pb-10">https://demo.saashq.org</p>
+            <p tw="text-[26px] text-neutral-400">
+              {description}
+            </p>
+
+            <div tw="flex py-5">
+              <SiNextdotjs size={50} color="white" />
+              <SiTypescript size={50} color="#3178C6" />
+              <SiMongodb size={50} color="#47A248" />
+              <SiPrisma size={50} color="#ffffff" />
+              <SiReact size={50} color="#61DAFB" />
+              <SiTailwindcss size={50} color="#06B6D4" />
+              <SiOpenai size={50} color="white" />
+            </div>
+
+            <p tw="text-neutral-300 pb-10">
+              https://demo.saashq.org
+            </p>
           </div>
         </div>
       ),
@@ -73,8 +87,10 @@ export async function GET(request: Request) {
       }
     );
   } catch (error) {
-    if (error instanceof Error) {
-      return new Response('Failed to generate OG image', { status: 500 });
-    }
+    console.error('OG image generation error:', error);
+
+    return new Response('Failed to generate OG image', {
+      status: 500,
+    });
   }
 }
