@@ -1,15 +1,15 @@
-import { authOptions } from '@/lib/auth';
-import { prismadb } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
+import { authOptions } from "@/lib/auth";
+import { prismadb } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 const _ResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
   global: z.record(z.string(), z.any()).optional(),
-  definitionStatus: z.enum(['active', 'inactive']),
+  definitionStatus: z.enum(["active", "inactive"]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   uiObject: z.object({
@@ -22,27 +22,30 @@ const _ResponseSchema = z.object({
 
 export type ResponseSchemaType = z.infer<typeof _ResponseSchema>;
 
-export async function GET({ params }: { params: { definitionId: string } }) {
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    return new NextResponse('Unauthenticated', { status: 401 });
+    return new NextResponse("Unauthenticated", { status: 401 });
   }
 
-  if (!params.definitionId) {
-    return new NextResponse('Definition ID is required', { status: 400 });
+  const { searchParams } = new URL(request.url);
+  const definitionId = searchParams.get("definitionId");
+
+  if (!definitionId) {
+    return new NextResponse("Definition ID is required", { status: 400 });
   }
 
   try {
     const definitions = await prismadb.definitions.findUnique({
       where: {
-        id: params.definitionId,
+        id: definitionId,
       },
     });
 
     return NextResponse.json({ definitions });
   } catch (error) {
-    console.log('[DEFINITIONS_SINGLE_GET]', error);
-    return new NextResponse('Initial error', { status: 500 });
+    console.log("[DEFINITIONS_SINGLE_GET]", error);
+    return new NextResponse("Initial error", { status: 500 });
   }
 }
