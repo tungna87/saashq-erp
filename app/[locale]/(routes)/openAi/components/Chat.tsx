@@ -1,6 +1,7 @@
 'use client';
 
-import { useCompletion } from 'ai/react';
+// Đổi từ 'ai/react' sang '@ai-sdk/react'
+import { useCompletion } from '@ai-sdk/react';
 
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -18,7 +19,6 @@ export default function AiHelpCenter() {
   } = useCompletion({
     api: '/api/openai/completion',
     onFinish: () => {
-      //console.log(response, "response");
       toast.success('Response received');
       setInput('');
     },
@@ -26,8 +26,6 @@ export default function AiHelpCenter() {
       toast.error('Error: no API key found');
     },
   });
-
-  //console.log(input, "input");
 
   return (
     <div className="mx-auto flex h-full w-full flex-col items-center justify-center gap-5 overflow-auto p-20">
