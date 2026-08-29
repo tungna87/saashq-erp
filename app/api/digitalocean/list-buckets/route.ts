@@ -1,18 +1,41 @@
 import { NextResponse } from 'next/server';
-import { s3Client } from '@/lib/digital-ocean-s3';
 import { ListBucketsCommand } from '@aws-sdk/client-s3';
 import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
+// Ép kiểu route thành dynamic để không bị prerender lúc build
+export const dynamic = 'force-dynamic';
 
-  if (!session) {
-    return NextResponse.json('Unauthorized', { status: 401 });
+export async function GET() {
+  // 1. Kiểm tra an toàn biến môi trường trước khi thực thi
+  if (!process.env.DO_ENDPOINT) {
+    return NextResponse.json(
+      { error: 'DO_ENDPOINT environment variable missing' },
+      { status: 500 }
+    );
   }
 
-  const buckets = await s3Client.send(new ListBucketsCommand({}));
-  console.log(buckets, 's3 buckets');
+  try {
+    // 2. Kiểm tra phiên đăng nhập
+    const session = await getServerSession(authOptions);
 
-  return NextResponse.json({ buckets, success: true }, { status: 200 });
+    if (!session) {
+      return NextResponse.json('Unauthorized', { status: 401 });
+    }
+
+    // 3. Import s3Client động tại đây để tránh lỗi nổ build khi thiếu biến môi trường
+    const { s3Client } = await import('@/lib/digital-ocean-s3');
+
+    // 4. Gọi API S3
+    const buckets = await s3Client.send(new ListBucketsCommand({}));
+    console.log(buckets, 's3 buckets');
+
+    return NextResponse.json({ buckets, success: true }, { status: 200 });
+  } catch (error: any) {
+    console.error('List buckets error:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
 }
